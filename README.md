@@ -117,3 +117,8 @@ app.listen(0);
   Returns an object having a `cancel` method and `context` instance, similar to `withCancel()`.
 
   A context that gets cancelled due to it timing out will have a `cancellationReason` that is an instance of `DeadlineExceededError`.
+
+## Future work
+
+- Provide `toAbortSignal` and `wireAbortSignal` helpers to provide interoperability with `AbortController` and `AbortSignal` primitives.
+- Provide a utility function to easily run `async` logic 

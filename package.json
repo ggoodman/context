@@ -25,7 +25,13 @@
     "type": "git",
     "url": "git+https://github.com/ggoodman/context.git"
   },
-  "keywords": [],
+  "keywords": [
+    "context",
+    "abortsignal",
+    "cancellation",
+    "go",
+    "golang"
+  ],
   "author": "Geoff Goodman <ggoodman@gmail.com>",
   "license": "MIT",
   "bugs": {
