@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - Added a copy of the MIT license
 - Added keywords to package.json and future work to README.md
+- Added automated test runs using GitHub Actions
 
 ## 0.0.1 - 2021-04-27
 ### Added
