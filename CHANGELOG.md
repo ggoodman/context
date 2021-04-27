@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+
+## [1.0.0] - 2021-04-27
 ### Added
 - Added a copy of the MIT license
 - Added keywords to package.json and future work to README.md
@@ -15,4 +17,5 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/ggoodman/context/compare/v0.0.1...HEAD
+[Unreleased]: https://github.com/ggoodman/context/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/ggoodman/context/compare/v0.0.1...v1.0.0
