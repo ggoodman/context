@@ -20,6 +20,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     const res = await Promise.race([ context, resPromise ]);
   })();
   ```
+- Add support for converting a `Context` to an `AbortSignal` in environments that support these using `asAbortSignal`.
+  
+  This feature allows easy interoperability with APIs that support `AbortSignal`s as a mechanism to propagate cancellation.
+  
+  For example, with `fetch`, adding a timeout could be as easy as:
+  
+  ```js
+  (async () => {
+    const { context } = Background.withTimeout(2000);
+    const signal = asAbortSignal(context);
+  
+    const res = await fetch('https://foo.bar', { signal });
+    const data = await res.json();
+  })();
+  ```
 
 ## [1.0.0] - 2021-04-27
 ### Added
