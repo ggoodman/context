@@ -1,3 +1,5 @@
+///<reference lib="dom" />
+
 import type { CancellationToken } from 'ts-primitives';
 import type { Context } from './context';
 import { CancelledError } from './errors';
@@ -6,6 +8,29 @@ import { isContext } from './factory';
 interface EventEmitterLike {
   once(eventName: string, handler: (...args: any[]) => void): this;
   removeListener(eventName: string, handler: (...args: any[]) => void): this;
+}
+
+/**
+ * Create an AbortSignal from a Context.
+ *
+ * @param ctx Context that we want to map to an AbortSignal
+ * @returns An AbortSignal that will fire when the Context gets cancelled
+ */
+export function asAbortSignal(
+  ctx: Context,
+  abortControllerConstructor = AbortController
+): AbortSignal {
+  const controller = new abortControllerConstructor();
+
+  if (ctx.cancellationReason) {
+    controller.abort();
+  } else {
+    ctx.onDidCancel(() => {
+      controller.abort();
+    });
+  }
+
+  return controller.signal;
 }
 
 export function wireCancellationToken(ctx: Context, token: CancellationToken) {

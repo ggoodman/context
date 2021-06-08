@@ -95,6 +95,19 @@ class ContextImpl implements Context {
     return this[kOnWillCancel]!.event;
   }
 
+  then<TResult1 = never, TResult2 = never>(
+    onfulfilled?: ((value: never) => TResult1 | PromiseLike<TResult1>) | undefined | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null
+  ): PromiseLike<TResult1 | TResult2> {
+    return new Promise<never>((resolve, reject) => {
+      if (this[kCancellationReason]) {
+        return reject(this[kCancellationReason]);
+      }
+
+      this.onDidCancel(reject);
+    }).then(onfulfilled, onrejected);
+  }
+
   withCancel() {
     const context = new ContextImpl(this[kHost], { deadlineAt: this[kDeadlineAt] });
     const cancel = (reason?: CancellationReason) =>
