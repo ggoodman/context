@@ -163,6 +163,56 @@ describe('createContextImplementation', (it) => {
     assert.ok(isDeadlineExceededError(context.cancellationReason));
     assert.ok(didFireCallback);
   });
+
+  it('will act as a Thenable', async () => {
+    const host = new TestContextHost();
+    const { context: Background } = createContextImplementation(host);
+    const { cancel, context } = Background.withCancel();
+
+    const gotSequence: string[] = [];
+
+    (async () => {
+      try {
+        await context;
+      } catch {
+        gotSequence.push('await thrown');
+      }
+    })();
+
+    context.onDidCancel(() => {
+      gotSequence.push('onDidCancel');
+    });
+
+    Promise.resolve(context).catch(() => {
+      gotSequence.push('promise chain');
+    });
+
+    const want = 'OK';
+    const got = await Promise.race([Promise.resolve('OK'), context]);
+    assert.equal(
+      got,
+      want,
+      `Racing a Promise against an live Context will return the resolved value of the Promise.`
+    );
+
+    cancel();
+
+    // Queue three microtasks so that existing promises with pending settles will settle.
+    // Why is it three? A careful analysis of created Promises and the resulting entries pushed
+    // to the microtask queue. Instead, a quick effort of trial-and-error shows that exactly
+    // three is enough.
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const wantSequence: string[] = ['onDidCancel', 'await thrown', 'promise chain'];
+
+    assert.equal(
+      gotSequence,
+      wantSequence,
+      'The sequence of events matches the expected order when using a Context as a Thenable.'
+    );
+  });
 });
 
 interface HandlerChainNode {

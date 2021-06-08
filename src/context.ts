@@ -4,7 +4,7 @@ interface IDisposable {
   dispose(): void;
 }
 
-export interface Context {
+export interface Context extends PromiseLike<never> {
   readonly cancellationReason: CancellationReason | undefined;
   readonly onDidCancel: (
     listener: (reason: CancellationReason, thisArg?: unknown, disposables?: IDisposable[]) => any

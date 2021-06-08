@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- Added support for treating a `Context` as a `PromiseLike<never>`.
+  
+  This is useful, for example, when you want to use a `Context` with a timeout to 'race' another `Promise`-returning operation, like an http request.
+  
+  ```js
+  (async () => {
+    const { context } = Background.withTimeout(2000);
+    const resPromise = fetch('https://foo.bar').then(res => res.json());
+  
+    // This will throw an Error that will either be true for isCancellationError or isDeadlineExceededError.
+    const res = await Promise.race([ context, resPromise ]);
+  })();
+  ```
 
 ## [1.0.0] - 2021-04-27
 ### Added
