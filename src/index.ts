@@ -10,9 +10,9 @@ declare function setTimeout(
 declare function clearTimeout(handle: number): void;
 
 export const { context: Background, isContext } = createContextImplementation({
-  clearTimeout,
+  clearTimeout: (id: any) => clearTimeout(id),
   currentTime: () => Date.now(),
-  setTimeout,
+  setTimeout: (...args: Parameters<typeof setTimeout>) => setTimeout(...args),
 });
 
 export type { Context } from './context';

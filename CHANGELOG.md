@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Fixed
+- Fixed an illegal invocation when using the default implementation of the `setTimeout` and `clearTimeout` functions.
+  
+  Previously, these functions were being called with the options object as the receiver instead of `globalThis`. This change calls these functions in a way that their receivers will be `globalThis`.
 
 ## [1.1.0] - 2021-06-08
 ### Added
