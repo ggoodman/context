@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Fixed
+- Fixed issue where an `.onDidCancel` handler registered on an already-cancelled `Context` was being invoked without the expected cancellation reason. (#3)
 
 ## [1.1.1] - 2021-06-09
 ### Fixed

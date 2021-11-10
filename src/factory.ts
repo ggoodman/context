@@ -78,7 +78,7 @@ class ContextImpl implements Context {
   get onDidCancel() {
     if (this[kCancellationReason]) {
       const event: Event<CancellationReason> = (callback, thisArg?) => {
-        const handle = this[kHost].setTimeout(callback.bind(thisArg), 0);
+        const handle = this[kHost].setTimeout(callback.bind(thisArg), 0, this[kCancellationReason]);
         return {
           dispose: () => {
             this[kHost].clearTimeout(handle);
