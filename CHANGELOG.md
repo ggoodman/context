@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+
+## [1.1.2] - 2021-11-10
 ### Fixed
 - Fixed issue where an `.onDidCancel` handler registered on an already-cancelled `Context` was being invoked without the expected cancellation reason. (#3)
 
@@ -56,7 +58,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/ggoodman/context/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/ggoodman/context/compare/v1.1.2...HEAD
+[1.1.2]: https://github.com/ggoodman/context/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/ggoodman/context/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/ggoodman/context/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/ggoodman/context/compare/v0.0.1...v1.0.0
