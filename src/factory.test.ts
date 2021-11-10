@@ -77,7 +77,7 @@ describe('createContextImplementation', (it) => {
   });
 
   it('will trigger Context onDidCancel callbacks asynchronously when registered on a cancelled context', () => {
-    let didFireCallback = false;
+    let cancellationReason = null;
 
     const host = new TestContextHost();
     const { context: Background } = createContextImplementation(host);
@@ -85,12 +85,12 @@ describe('createContextImplementation', (it) => {
     const { cancel, context } = Background.withCancel();
 
     cancel();
-    context.onDidCancel(() => {
-      didFireCallback = true;
+    context.onDidCancel((e) => {
+      cancellationReason = e;
     });
-    assert.not(didFireCallback);
+    assert.not(cancellationReason);
     host.advance(1);
-    assert.ok(didFireCallback);
+    assert.ok(isCancelledError(cancellationReason));
     assert.ok(isCancelledError(context.cancellationReason));
   });
 
@@ -223,11 +223,7 @@ interface HandlerChainNode {
 }
 
 class TestContextHost implements ContextHost<HandlerChainNode> {
-  private head: HandlerChainNode = {
-    args: [],
-    handler: () => undefined,
-    timeoutAt: 0,
-  };
+  private head: HandlerChainNode | undefined = undefined;
   private currentTimeMs = 0;
   readonly clearTimeout: ContextHost<HandlerChainNode>['clearTimeout'];
   readonly setTimeout: ContextHost<HandlerChainNode>['setTimeout'];
@@ -254,13 +250,17 @@ class TestContextHost implements ContextHost<HandlerChainNode> {
         timeoutAt,
       };
 
-      let node: HandlerChainNode = this.head;
-      while (node.next && node.next.timeoutAt < timeoutAt) {
-        node = node.next;
-      }
+      let node = this.head;
+      if (node) {
+        while (node.next && node.next.timeoutAt < timeoutAt) {
+          node = node.next;
+        }
 
-      handle.next = node.next;
-      node.next = handle;
+        handle.next = node.next;
+        node.next = handle;
+      } else {
+        this.head = handle;
+      }
 
       return handle;
     };
@@ -272,11 +272,10 @@ class TestContextHost implements ContextHost<HandlerChainNode> {
     if (!options.skipFireEvents) {
       let node = this.head;
 
-      while (node.next && node.next.timeoutAt <= this.currentTimeMs) {
-        const next = node.next;
-        next.handler(...node.args);
+      while (node && node.timeoutAt <= this.currentTimeMs) {
+        node.handler(...node.args);
 
-        node.next = next.next;
+        node = node.next;
       }
     }
   }
