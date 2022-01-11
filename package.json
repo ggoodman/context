@@ -8,13 +8,16 @@
   "description": "A take on ergonomic cancellation and timeout propagation in JavaScript inspired by the Go context package",
   "main": "src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./node": "./src/node.ts",
+    "./web": "./src/web.ts"
   },
+  "browser": false,
   "sideEffects": false,
   "scripts": {
     "build": "distilt",
     "dev": "microbundle watch",
-    "test": "uvu -r esbuild-register",
+    "test": "c8 uvu -r esbuild-register",
     "posttest": "kacl lint",
     "prepack": "npm run build",
     "preversion": "kacl prerelease",
@@ -43,16 +46,22 @@
     "singleQuote": true
   },
   "devDependencies": {
-    "@types/node": "^14.14.43",
-    "distilt": "^0.10.5",
-    "esbuild-register": "^2.5.0",
-    "gh-release": "^5.0.0",
+    "@types/node": "^16.11.14",
+    "abort-controller": "^3.0.0",
+    "c8": "^7.10.0",
+    "distilt": "^0.12.0",
+    "esbuild-register": "^3.3.1",
+    "gh-release": "^6.0.1",
     "kacl": "^1.1.1",
     "prettier": "^2.2.1",
-    "typescript": "^4.2.4",
+    "typescript": "^4.5.4",
     "uvu": "^0.5.1"
   },
-  "dependencies": {
-    "ts-primitives": "^3.2.0"
+  "volta": {
+    "node": "16.13.1",
+    "npm": "8.3.0"
+  },
+  "engines": {
+    "node": ">=14.6"
   }
 }

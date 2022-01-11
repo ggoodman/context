@@ -1,21 +1,31 @@
-import { createContextImplementation } from './factory';
+import type { CancelFunc, Context } from './context';
+import type { ContextHost } from './host';
+import { ContextImpl } from './impl';
+import { ContextHostNode } from './node';
 
-// We assume that we're running in an environment where setTimeout and clearTimeout are globally
-// available.
-declare function setTimeout(
-  handler: (...args: any[]) => void,
-  timeout?: number,
-  ...args: any[]
-): number;
-declare function clearTimeout(handle: number): void;
+export type { Context };
+export * from './host';
+export * from './errors';
 
-export const { context: Background, isContext } = createContextImplementation({
-  clearTimeout: (id: any) => clearTimeout(id),
-  currentTime: () => Date.now(),
-  setTimeout: (...args: Parameters<typeof setTimeout>) => setTimeout(...args),
-});
+export function background(host: ContextHost = ContextHostNode.getInstance()): Context {
+  return ContextImpl.background(host);
+}
 
-export type { Context } from './context';
-export { isCancelledError, isDeadlineExceededError } from './errors';
-export type { CancellationReason, CancelledError, DeadlineExceededError } from './errors';
-export * from './wiring';
+export function isContext(obj: unknown): obj is Context {
+  return ContextImpl.isContext(obj);
+}
+
+export function withCancel(ctx: Context): { ctx: Context; cancel: CancelFunc } {
+  return ContextImpl.withCancel(ctx);
+}
+
+export function withDeadline(
+  ctx: Context,
+  epochTimeMs: number
+): { ctx: Context; cancel: CancelFunc } {
+  return ContextImpl.withDeadline(ctx, epochTimeMs);
+}
+
+export function withTimeout(ctx: Context, timeoutMs: number): { ctx: Context; cancel: CancelFunc } {
+  return ContextImpl.withTimeout(ctx, timeoutMs);
+}
