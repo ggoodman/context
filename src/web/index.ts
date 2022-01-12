@@ -1,5 +1,5 @@
-import type { Context } from './context';
-import { ContextImpl } from './impl';
+import type { Context } from '../context';
+import { ContextImpl } from '../impl';
 
 interface EventTargetLike extends Pick<EventTarget, 'addEventListener' | 'removeEventListener'> {}
 

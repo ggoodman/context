@@ -9,10 +9,11 @@
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./node": "./src/node.ts",
-    "./web": "./src/web.ts"
+    "./node": {
+      "node": "./src/node/index.ts"
+    },
+    "./web": "./src/web/index.ts"
   },
-  "browser": false,
   "sideEffects": false,
   "scripts": {
     "build": "distilt",
@@ -49,7 +50,7 @@
     "@types/node": "^16.11.14",
     "abort-controller": "^3.0.0",
     "c8": "^7.10.0",
-    "distilt": "^0.12.0",
+    "distilt": "^0.13.0",
     "esbuild-register": "^3.3.1",
     "gh-release": "^6.0.1",
     "kacl": "^1.1.1",

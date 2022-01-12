@@ -2,6 +2,8 @@
 
 import type { CancellationReason } from './errors';
 import type { Disposable } from './host';
+import { ContextHostNative } from './host';
+import { ContextImpl } from './impl';
 
 export type CancelFunc = (message?: string | Error) => void;
 type AbortSignal = AbortController['signal'];
@@ -51,4 +53,32 @@ export interface Context extends PromiseLike<never> {
    * @param listener The handler to be called when the Context is cancelled.
    */
   onDidCancel(listener: CancellationListener): Disposable;
+}
+
+export namespace Context {
+  export function background() {
+    return ContextImpl.background(ContextHostNative.getInstance());
+  }
+
+  export function isContext(obj: unknown): obj is Context {
+    return ContextImpl.isContext(obj);
+  }
+
+  export function withCancel(ctx: Context): { ctx: Context; cancel: CancelFunc } {
+    return ContextImpl.withCancel(ctx);
+  }
+
+  export function withDeadline(
+    ctx: Context,
+    epochTimeMs: number
+  ): { ctx: Context; cancel: CancelFunc } {
+    return ContextImpl.withDeadline(ctx, epochTimeMs);
+  }
+
+  export function withTimeout(
+    ctx: Context,
+    timeoutMs: number
+  ): { ctx: Context; cancel: CancelFunc } {
+    return ContextImpl.withTimeout(ctx, timeoutMs);
+  }
 }
