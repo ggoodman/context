@@ -6,15 +6,9 @@ import { ContextHostNative } from './host';
 import { ContextImpl } from './impl';
 
 export type CancelFunc = (message?: string | Error) => void;
-type AbortSignal = AbortController['signal'];
 export type CancellationListener = (err: CancellationReason) => any;
 
 export interface Context extends PromiseLike<never> {
-  /**
-   * Get the `AbortSignal` corresponding to the Context.
-   */
-  readonly signal: AbortSignal;
-
   /**
    * Produce a `Promise` that will *resolve* to the Context's cancellation
    * reason.

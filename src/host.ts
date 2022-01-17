@@ -1,3 +1,5 @@
+import { queueMicrotask } from './queueMicrotask';
+
 type AnyArgs = any[];
 type AnyFunc = (...args: AnyArgs) => any;
 
