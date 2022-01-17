@@ -454,12 +454,6 @@ class TestContextHost implements ContextHost {
 
   public readonly uncaughtExceptions: unknown[] = [];
 
-  constructor(private abortControllerCons = AbortController) {}
-
-  createAbortController(): AbortController {
-    return new this.abortControllerCons();
-  }
-
   getTime(): number {
     return this.currentTimeMs;
   }

@@ -8,8 +8,6 @@ export interface Disposable {
 }
 
 export interface ContextHost {
-  createAbortController(): AbortController;
-
   getTime(): number;
   scheduleMicrotask(fn: AnyFunc, ...args: AnyArgs): Disposable;
   scheduleWithTimeout(timeout: number, fn: AnyFunc, ...args: AnyArgs): Disposable;
@@ -29,10 +27,6 @@ export class ContextHostNative implements ContextHost {
   }
 
   readonly scheduleWithTimeout = nativeScheduleWithTimeout;
-
-  createAbortController(): AbortController {
-    return new AbortController();
-  }
 
   getTime() {
     return Date.now();
