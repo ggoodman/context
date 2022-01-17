@@ -17,6 +17,4 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: 'Install dependencies'
         uses: bahmutov/npm-install@v1
-        env:
-          npm_config_ignore_scripts: true
       - run: npm run test

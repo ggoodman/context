@@ -13,8 +13,6 @@ jobs:
           registry-url: https://registry.npmjs.org/
       - name: 'Install dependencies'
         uses: bahmutov/npm-install@v1
-        env:
-          npm_config_ignore_scripts: true
       - name: 'Build distribution'
         run: npm run build
       - name: 'Publish to NPM'
