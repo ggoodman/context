@@ -2,10 +2,9 @@
 
 import type { CancellationReason } from './errors';
 import type { Disposable } from './host';
-import { ContextHostNative } from './host';
-import { ContextImpl } from './impl';
 
 export type CancelFunc = (message?: string | Error) => void;
+type AbortSignal = AbortController['signal'];
 export type CancellationListener = (err: CancellationReason) => any;
 
 export interface Context extends PromiseLike<never> {
@@ -32,14 +31,6 @@ export interface Context extends PromiseLike<never> {
   getValue(key: unknown): unknown;
 
   /**
-   * Return a new Context with a bit of contextual data attached.
-   *
-   * @param key The key with which to associate data.
-   * @param value The value of the data.
-   */
-  withValue(key: unknown, value: unknown): Context;
-
-  /**
    * Attach a callback function that will be called with the Context is
    * cancelled. The return value of this function is a `Disposable` whose
    * `dispose()` method will remove the callback.
@@ -47,32 +38,17 @@ export interface Context extends PromiseLike<never> {
    * @param listener The handler to be called when the Context is cancelled.
    */
   onDidCancel(listener: CancellationListener): Disposable;
-}
 
-export namespace Context {
-  export function background() {
-    return ContextImpl.background(ContextHostNative.getInstance());
-  }
+  /**
+   * Get the `AbortSignal` corresponding to the Context.
+   */
+  signal(): AbortSignal;
 
-  export function isContext(obj: unknown): obj is Context {
-    return ContextImpl.isContext(obj);
-  }
-
-  export function withCancel(ctx: Context): { ctx: Context; cancel: CancelFunc } {
-    return ContextImpl.withCancel(ctx);
-  }
-
-  export function withDeadline(
-    ctx: Context,
-    epochTimeMs: number
-  ): { ctx: Context; cancel: CancelFunc } {
-    return ContextImpl.withDeadline(ctx, epochTimeMs);
-  }
-
-  export function withTimeout(
-    ctx: Context,
-    timeoutMs: number
-  ): { ctx: Context; cancel: CancelFunc } {
-    return ContextImpl.withTimeout(ctx, timeoutMs);
-  }
+  /**
+   * Return a new Context with a bit of contextual data attached.
+   *
+   * @param key The key with which to associate data.
+   * @param value The value of the data.
+   */
+  withValue(key: unknown, value: unknown): Context;
 }

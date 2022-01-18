@@ -9,10 +9,6 @@
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./abort": {
-      "node": "./src/abort/node.ts",
-      "default": "./src/abort/index.ts"
-    },
     "./node": {
       "node": "./src/node/index.ts"
     },

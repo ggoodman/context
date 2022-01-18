@@ -1,13 +1,16 @@
 ///<reference types="node" />
 
+import AbortController from 'abort-controller';
 import { suite, Test } from 'uvu';
 import * as assert from 'uvu/assert';
 import {
   AggregateError,
   CancellationReason,
   CancelledError,
-  Context,
   DeadlineExceededError,
+  withCancel,
+  withDeadline,
+  withTimeout,
 } from '.';
 import { isCancelledError, isContextError, isDeadlineExceededError } from './errors';
 import type { ContextHost, Disposable } from './host';
@@ -15,7 +18,8 @@ import { ContextImpl } from './impl';
 
 describe('background', (it) => {
   it('.error() is undefined', () => {
-    const root = Context.background();
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
 
     assert.equal(root.error(), undefined);
   });
@@ -23,8 +27,9 @@ describe('background', (it) => {
 
 describe('Context', (it) => {
   it('will report the reason when it is cancelled', () => {
-    const root = Context.background();
-    const { ctx, cancel } = Context.withCancel(root);
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
+    const { ctx, cancel } = withCancel(root);
 
     assert.equal(ctx.error(), undefined);
 
@@ -36,8 +41,9 @@ describe('Context', (it) => {
   });
 
   it('will report the same reason reference when cancelled', () => {
-    const root = Context.background();
-    const { ctx, cancel } = Context.withCancel(root);
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
+    const { ctx, cancel } = withCancel(root);
 
     cancel();
 
@@ -45,8 +51,9 @@ describe('Context', (it) => {
   });
 
   it('will ignore multiple calls to cancel', () => {
-    const root = Context.background();
-    const { ctx, cancel } = Context.withCancel(root);
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
+    const { ctx, cancel } = withCancel(root);
 
     cancel();
     cancel();
@@ -56,12 +63,13 @@ describe('Context', (it) => {
   });
 
   it('children will report the same reason reference when cancelled', () => {
-    const root = Context.background();
-    const { ctx, cancel } = Context.withCancel(root);
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
+    const { ctx, cancel } = withCancel(root);
 
     cancel();
 
-    const { ctx: child } = Context.withCancel(ctx);
+    const { ctx: child } = withCancel(ctx);
 
     assert.is(ctx.error(), child.error());
   });
@@ -71,7 +79,7 @@ describe('Cancellation listeners', (it) => {
   it('will only ever fire once', () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
-    const { ctx, cancel } = Context.withCancel(root);
+    const { ctx, cancel } = withCancel(root);
 
     let firedCount = 0;
 
@@ -94,7 +102,7 @@ describe('Cancellation listeners', (it) => {
   it('will not fire if they have been disposed before the Context is cancelled', () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
-    const { ctx, cancel } = Context.withCancel(root);
+    const { ctx, cancel } = withCancel(root);
 
     let firedCount = 0;
 
@@ -113,7 +121,7 @@ describe('Cancellation listeners', (it) => {
   it('will not fire if they have been disposed after the Context is cancelled but before the next microtick', () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
-    const { ctx, cancel } = Context.withCancel(root);
+    const { ctx, cancel } = withCancel(root);
 
     let firedCount = 0;
 
@@ -132,7 +140,7 @@ describe('Cancellation listeners', (it) => {
   it('will fire with the same reason reference when cancelled after registering the handler', () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
-    const { ctx, cancel } = Context.withCancel(root);
+    const { ctx, cancel } = withCancel(root);
 
     let reason: CancellationReason | undefined = undefined;
 
@@ -156,7 +164,7 @@ describe('Cancellation listeners', (it) => {
   it('will fire with the same reason reference when cancelled before registering the handler', () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
-    const { ctx, cancel } = Context.withCancel(root);
+    const { ctx, cancel } = withCancel(root);
 
     cancel();
 
@@ -181,7 +189,7 @@ describe('Cancellation listeners', (it) => {
   it("will invoke the host's onUncaughtException handler with a reference to the error when a single handler throws", () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
-    const { ctx, cancel } = Context.withCancel(root);
+    const { ctx, cancel } = withCancel(root);
 
     cancel();
 
@@ -198,7 +206,7 @@ describe('Cancellation listeners', (it) => {
   it("will invoke the host's onUncaughtException handler with an AggregateError when multiple handlers throw", () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
-    const { ctx, cancel } = Context.withCancel(root);
+    const { ctx, cancel } = withCancel(root);
 
     cancel();
 
@@ -221,9 +229,10 @@ describe('Cancellation listeners', (it) => {
 
 describe('Child contexts', (it) => {
   it('will reflect cancellation of the parent', () => {
-    const root = Context.background();
-    const { ctx, cancel } = Context.withCancel(root);
-    const { ctx: childCtx } = Context.withCancel(ctx);
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
+    const { ctx, cancel } = withCancel(root);
+    const { ctx: childCtx } = withCancel(ctx);
 
     assert.not(ctx.error());
     assert.not(childCtx.error());
@@ -238,8 +247,8 @@ describe('Child contexts', (it) => {
   it('will fire their handlers async when the parent is cancelled', () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
-    const { ctx, cancel } = Context.withCancel(root);
-    const { ctx: childCtx } = Context.withCancel(ctx);
+    const { ctx, cancel } = withCancel(root);
+    const { ctx: childCtx } = withCancel(ctx);
 
     let reason: CancellationReason | undefined = undefined;
 
@@ -260,11 +269,11 @@ describe('Child contexts', (it) => {
   it('will fire their handlers async when created from a cancelled parent', () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
-    const { ctx, cancel } = Context.withCancel(root);
+    const { ctx, cancel } = withCancel(root);
 
     cancel();
 
-    const { ctx: childCtx } = Context.withCancel(ctx);
+    const { ctx: childCtx } = withCancel(ctx);
 
     let reason: CancellationReason | undefined = undefined;
 
@@ -283,9 +292,9 @@ describe('Child contexts', (it) => {
   it('will not fire their handlers when they have been disposed before cancellation', () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
-    const { ctx, cancel } = Context.withCancel(root);
+    const { ctx, cancel } = withCancel(root);
 
-    const { ctx: childCtx } = Context.withCancel(ctx);
+    const { ctx: childCtx } = withCancel(ctx);
 
     let reason: CancellationReason | undefined = undefined;
 
@@ -307,11 +316,11 @@ describe('Child contexts', (it) => {
   it('will not fire their handlers when they have been disposed after cancellation', () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
-    const { ctx, cancel } = Context.withCancel(root);
+    const { ctx, cancel } = withCancel(root);
 
     cancel();
 
-    const { ctx: childCtx } = Context.withCancel(ctx);
+    const { ctx: childCtx } = withCancel(ctx);
 
     let reason: CancellationReason | undefined = undefined;
 
@@ -332,10 +341,11 @@ describe('Child contexts', (it) => {
 
 describe('withValue', (it) => {
   it('will allow children to read the value but not parents', () => {
-    const root = Context.background();
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
     const key = 'hello';
     const value = ['world'];
-    const { ctx } = Context.withCancel(root);
+    const { ctx } = withCancel(root);
     const childCtx = ctx.withValue(key, value);
 
     assert.is(ctx.getValue(key), undefined);
@@ -343,7 +353,8 @@ describe('withValue', (it) => {
   });
 
   it('will allow grand children to read the value', () => {
-    const root = Context.background();
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
     const key = 'hello';
     const value = ['world'];
     const childCtx = root.withValue(key, value);
@@ -361,7 +372,7 @@ describe('withDeadline', (it) => {
   it('will mark a context as cancelled with a DeadlineExceededError after the deadline', () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
-    const { ctx } = Context.withDeadline(root, 1);
+    const { ctx } = withDeadline(root, 1);
 
     assert.is(ctx.error(), undefined);
 
@@ -375,8 +386,8 @@ describe('withDeadline', (it) => {
   it("will mark a child context as cancelled with the lesser of the parent's and its own deadlines", () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
-    const { ctx } = Context.withDeadline(root, 1);
-    const { ctx: childCtx } = Context.withDeadline(ctx, 3);
+    const { ctx } = withDeadline(root, 1);
+    const { ctx: childCtx } = withDeadline(ctx, 3);
 
     assert.is(ctx.error(), undefined);
 
@@ -394,7 +405,7 @@ describe('withTimeout', (it) => {
   it('will mark a context as cancelled with a DeadlineExceededError after a timeout interval', () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
-    const { ctx } = Context.withTimeout(root, 1);
+    const { ctx } = withTimeout(root, 1);
 
     assert.is(ctx.error(), undefined);
 
@@ -408,7 +419,7 @@ describe('withTimeout', (it) => {
   it('will mark a context as cancelled with a DeadlineExceededError after a timeout interval even if the internal timer has yet to fire', () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
-    const { ctx } = Context.withTimeout(root, 1);
+    const { ctx } = withTimeout(root, 1);
 
     assert.is(ctx.error(), undefined);
 
@@ -422,13 +433,13 @@ describe('withTimeout', (it) => {
   it("will mark a child context as cancelled when it's parent's deadline is already exceeded", () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
-    const { ctx } = Context.withTimeout(root, 1);
+    const { ctx } = withTimeout(root, 1);
 
     host.advance(1);
 
     assert.instance(ctx.error(), DeadlineExceededError);
 
-    const { ctx: childCtx } = Context.withTimeout(ctx, 1);
+    const { ctx: childCtx } = withTimeout(ctx, 1);
 
     assert.is(ctx.error(), childCtx.error());
     assert.ok(isDeadlineExceededError(ctx.error()));
@@ -453,6 +464,10 @@ class TestContextHost implements ContextHost {
   private currentTimeMs = 0;
 
   public readonly uncaughtExceptions: unknown[] = [];
+
+  createAbortController(): AbortController {
+    return new AbortController();
+  }
 
   getTime(): number {
     return this.currentTimeMs;
