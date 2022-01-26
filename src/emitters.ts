@@ -1,8 +1,7 @@
 ///<reference types="node" />
 
-import { finished } from 'node:stream';
-import type { Context } from '../context';
-import { ContextImpl } from '../impl';
+import type { Context } from './context';
+import { ContextImpl } from './emitterImpl';
 
 interface EventEmitterLike {
   once(eventName: string, handler: AnyFunc): void;
@@ -40,24 +39,6 @@ export function withEventEmitter<TEventName extends string = string>(
 
     ee.once(eventName, eventHandler);
   }
-
-  return childCtx;
-}
-
-export function withStreamCompletion(
-  ctx: Context,
-  stream: NodeJS.ReadableStream | NodeJS.WritableStream
-): Context {
-  const { ctx: childCtx, cancel } = ContextImpl.withCancel(ctx);
-
-  const cleanup = finished(stream, (err) => {
-    disposable.dispose();
-
-    cancel(err || undefined);
-  });
-  const disposable = ctx.onDidCancel(() => {
-    cleanup();
-  });
 
   return childCtx;
 }

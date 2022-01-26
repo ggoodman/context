@@ -1,10 +1,9 @@
 ///<reference types="node" />
 
-import { ContextImpl } from '../impl';
+import { ContextImpl } from '../emitterImpl';
 import { ContextHostNode } from './host';
 
-export * from '../';
-export * from './events';
+export * from '../api';
 
 export function background() {
   return ContextImpl.background(ContextHostNode.getInstance());

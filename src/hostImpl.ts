@@ -1,5 +1,5 @@
-import type { ContextHost, Disposable } from '../host';
-import { queueMicrotask } from '../queueMicrotask';
+import type { ContextHost, Disposable } from './host';
+import { queueMicrotask } from './queueMicrotask';
 
 type AnyArgs = any[];
 type AnyFunc = (...args: AnyArgs) => any;

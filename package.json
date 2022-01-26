@@ -9,10 +9,11 @@
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./node": {
-      "node": "./src/node/index.ts"
-    },
-    "./web": "./src/web/index.ts"
+    "./compat": "./src/compat/index.ts",
+    "./emitters": "./src/emitters.ts",
+    "./streams": {
+      "node": "./src/streams.ts"
+    }
   },
   "sideEffects": false,
   "scripts": {

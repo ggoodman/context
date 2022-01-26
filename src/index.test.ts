@@ -12,9 +12,9 @@ import {
   withDeadline,
   withTimeout,
 } from '.';
+import { ContextImpl } from './emitterImpl';
 import { isCancelledError, isContextError, isDeadlineExceededError } from './errors';
 import type { ContextHost, Disposable } from './host';
-import { ContextImpl } from './impl';
 
 describe('background', (it) => {
   it('.error() is undefined', () => {
