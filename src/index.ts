@@ -3,6 +3,6 @@ import { ContextHostImpl } from './hostImpl';
 
 export * from './api';
 
-export function background() {
+export function Background() {
   return ContextImpl.background(ContextHostImpl.getInstance());
 }

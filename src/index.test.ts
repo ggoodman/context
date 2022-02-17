@@ -580,6 +580,59 @@ describe('Promise interop', (it) => {
   });
 });
 
+describe('Context-local storage', (it) => {
+  it('allows creating child contexts with associated data', () => {
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
+    const key = 'key';
+    const ctx = root.withValue(key, 'value');
+    const { ctx: childCtx } = withCancel(ctx);
+    const maskedValueCtx = childCtx.withValue(key, 'VALUE');
+
+    assert.equal(root.getValue(key), undefined);
+    assert.equal(root.hasValue(key), false);
+    assert.equal(ctx.getValue(key), 'value');
+    assert.equal(childCtx.getValue(key), 'value');
+    assert.equal(childCtx.hasValue(key), true);
+    assert.equal(maskedValueCtx.getValue(key), 'VALUE');
+  });
+
+  it('allows creating child contexts with associated complex data', () => {
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
+    const key = Symbol('key');
+    const ctx = root.withValue(key, 'value');
+    const { ctx: childCtx } = withCancel(ctx);
+    const maskedValueCtx = childCtx.withValue(key, 'VALUE');
+
+    assert.equal(root.getValue(key), undefined);
+    assert.equal(root.hasValue(key), false);
+    assert.equal(ctx.getValue(key), 'value');
+    assert.equal(ctx.getValue('other'), undefined);
+    assert.equal(ctx.hasValue('other'), false);
+    assert.equal(childCtx.getValue(key), 'value');
+    assert.equal(childCtx.hasValue(key), true);
+    assert.equal(maskedValueCtx.getValue(key), 'VALUE');
+  });
+
+  it('allows storing undefined values whose presence is tracked', () => {
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
+    const key = Symbol('key');
+    const ctx = root.withValue(key, undefined);
+    const { ctx: childCtx } = withCancel(ctx);
+    const maskedValueCtx = childCtx.withValue(key, 'VALUE');
+
+    assert.equal(root.getValue(key), undefined);
+    assert.equal(root.hasValue(key), false);
+    assert.equal(ctx.getValue(key), undefined);
+    assert.equal(ctx.hasValue(key), true);
+    assert.equal(childCtx.getValue(key), undefined);
+    assert.equal(childCtx.hasValue(key), true);
+    assert.equal(maskedValueCtx.getValue(key), 'VALUE');
+  });
+});
+
 interface HandlerChainNode {
   args: any[];
   handler: (...args: any[]) => any;

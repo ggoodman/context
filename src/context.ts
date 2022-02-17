@@ -30,6 +30,17 @@ export interface Context extends PromiseLike<never> {
   getValue(key: unknown): unknown;
 
   /**
+   * Determine if this context or any of its ancestors contain a value for the requested key.
+   *
+   * This might be useful in situations where a `null` or `undefined` value might deliberately
+   * be set but it must be distinguished from cases where the context has no values assigned to
+   * the given key.
+   *
+   * @param key The key whose presence is to be tested
+   */
+  hasValue(key: unknown): boolean;
+
+  /**
    * Attach a callback function that will be called with the Context is
    * cancelled. The return value of this function is a `Disposable` whose
    * `dispose()` method will remove the callback.

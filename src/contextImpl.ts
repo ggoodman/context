@@ -231,6 +231,10 @@ export class ContextImpl implements Context {
     return this.#parent?.getValue(key);
   }
 
+  hasValue(key: unknown): boolean {
+    return this.#key === key || (!!this.#parent?.hasValue(key) ?? false);
+  }
+
   onDidCancel(listener: CancellationListener): Disposable {
     // We need to wrap listeners in a wrapper so that two of the
     // same function registered as listeners don't have the same
