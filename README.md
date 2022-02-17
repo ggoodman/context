@@ -24,7 +24,7 @@ npm install --save @ggoodman/context
 ## Example
 
 ```js
-import { Background, withCancel, withEventEmitter } from '@ggoodman/context';
+import { Background, withCancel, withEventEmitter, withTimeout } from '@ggoodman/context';
 import Express from 'express';
 import * as Stream from 'stream';
 
