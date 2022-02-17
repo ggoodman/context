@@ -4,7 +4,6 @@ import type { CancellationReason } from './errors';
 import type { Disposable } from './host';
 
 export type CancelFunc = (message?: string | Error) => void;
-type AbortSignal = AbortController['signal'];
 export type CancellationListener = (err: CancellationReason) => any;
 
 export interface Context extends PromiseLike<never> {
@@ -38,11 +37,6 @@ export interface Context extends PromiseLike<never> {
    * @param listener The handler to be called when the Context is cancelled.
    */
   onDidCancel(listener: CancellationListener): Disposable;
-
-  /**
-   * Get the `AbortSignal` corresponding to the Context.
-   */
-  signal(): AbortSignal;
 
   /**
    * Return a new Context with a bit of contextual data attached.

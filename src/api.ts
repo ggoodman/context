@@ -3,8 +3,6 @@ import { ContextImpl } from './contextImpl';
 
 export type { Context } from './context';
 export * from './errors';
-export * from './eventTarget';
-export type { ContextHost } from './host';
 
 export function isContext(obj: unknown): obj is Context {
   return ContextImpl.isContext(obj);

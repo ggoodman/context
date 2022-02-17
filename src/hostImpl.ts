@@ -4,12 +4,12 @@ import { queueMicrotask } from './queueMicrotask';
 type AnyArgs = any[];
 type AnyFunc = (...args: AnyArgs) => any;
 
-export class ContextHostWeb implements ContextHost {
-  static #instance?: ContextHostWeb;
+export class ContextHostImpl implements ContextHost {
+  static #instance?: ContextHostImpl;
 
   static getInstance() {
     if (!this.#instance) {
-      this.#instance = new ContextHostWeb();
+      this.#instance = new ContextHostImpl();
     }
 
     return this.#instance;

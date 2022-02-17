@@ -1,6 +1,5 @@
 ///<reference types="node" />
 
-import AbortController from 'abort-controller';
 import { suite, Test } from 'uvu';
 import * as assert from 'uvu/assert';
 import {
@@ -447,6 +446,140 @@ describe('withTimeout', (it) => {
   });
 });
 
+describe('Promise interop', (it) => {
+  it('will allow pending Contexts to be awaited', async () => {
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
+    const { ctx, cancel } = withCancel(root);
+
+    let didCancel = false;
+    let cancelErr;
+
+    const promise = Promise.resolve(ctx)
+      .catch((err) => {
+        cancelErr = err;
+      })
+      .finally(() => {
+        didCancel = true;
+      });
+
+    assert.equal(didCancel, false);
+    assert.equal(ctx.error(), undefined);
+
+    // Simulate waiting a microtick so that the promise resolution above
+    // kicks off.
+    await Promise.resolve();
+
+    cancel();
+
+    host.flushMicrotaskQueue();
+
+    await promise;
+
+    assert.equal(didCancel, true);
+    assert.equal(ctx.error(), cancelErr);
+    assert.instance(ctx.error(), CancelledError);
+  });
+
+  it('will allow cancelled Contexts to be awaited', async () => {
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
+    const { ctx, cancel } = withCancel(root);
+
+    let didCancel = false;
+    let cancelErr;
+
+    const promise = (async () => {
+      try {
+        return await ctx;
+      } catch (err) {
+        cancelErr = err;
+      } finally {
+        didCancel = true;
+      }
+    })();
+
+    assert.equal(didCancel, false);
+    assert.equal(ctx.error(), undefined);
+
+    cancel();
+
+    host.flushMicrotaskQueue();
+
+    await promise;
+
+    assert.equal(didCancel, true);
+    assert.equal(ctx.error(), cancelErr);
+    assert.instance(ctx.error(), CancelledError);
+  });
+
+  it('will allow pending Contexts to be awaited for completion with .done()', async () => {
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
+    const { ctx, cancel } = withCancel(root);
+
+    let didCancel = false;
+    let cancelErr;
+
+    const promise = Promise.resolve(ctx.done())
+      .catch((err) => {
+        cancelErr = err;
+      })
+      .finally(() => {
+        didCancel = true;
+      });
+
+    assert.equal(didCancel, false);
+    assert.equal(ctx.error(), undefined);
+
+    // Simulate waiting a microtick so that the promise resolution above
+    // kicks off.
+    await Promise.resolve();
+
+    cancel();
+
+    host.flushMicrotaskQueue();
+
+    await promise;
+
+    assert.equal(didCancel, true);
+    assert.equal(cancelErr, undefined);
+    assert.instance(ctx.error(), CancelledError);
+  });
+
+  it('will allow cancelled Contexts to be awaited for completion with .done()', async () => {
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
+    const { ctx, cancel } = withCancel(root);
+
+    let didCancel = false;
+    let cancelErr;
+
+    const promise = (async () => {
+      try {
+        return await ctx.done();
+      } catch (err) {
+        cancelErr = err;
+      } finally {
+        didCancel = true;
+      }
+    })();
+
+    assert.equal(didCancel, false);
+    assert.equal(ctx.error(), undefined);
+
+    cancel();
+
+    host.flushMicrotaskQueue();
+
+    await promise;
+
+    assert.equal(didCancel, true);
+    assert.equal(cancelErr, undefined);
+    assert.instance(ctx.error(), CancelledError);
+  });
+});
+
 interface HandlerChainNode {
   args: any[];
   handler: (...args: any[]) => any;
@@ -464,10 +597,6 @@ class TestContextHost implements ContextHost {
   private currentTimeMs = 0;
 
   public readonly uncaughtExceptions: unknown[] = [];
-
-  createAbortController(): AbortController {
-    return new AbortController();
-  }
 
   getTime(): number {
     return this.currentTimeMs;

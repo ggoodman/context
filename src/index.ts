@@ -1,8 +1,8 @@
 import { ContextImpl } from './contextImpl';
-import { ContextHostWeb } from './hostImpl';
+import { ContextHostImpl } from './hostImpl';
 
 export * from './api';
 
 export function background() {
-  return ContextImpl.background(ContextHostWeb.getInstance());
+  return ContextImpl.background(ContextHostImpl.getInstance());
 }

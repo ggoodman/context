@@ -6,8 +6,6 @@ export interface Disposable {
 }
 
 export interface ContextHost {
-  createAbortController(): AbortController;
-
   getTime(): number;
   scheduleMicrotask(fn: AnyFunc, ...args: AnyArgs): Disposable;
   scheduleWithTimeout(timeout: number, fn: AnyFunc, ...args: AnyArgs): Disposable;

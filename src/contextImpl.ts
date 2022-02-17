@@ -175,8 +175,6 @@ export class ContextImpl implements Context {
   #key?: any;
   #value?: any;
 
-  #abortController?: AbortController;
-
   constructor(host: ContextHost, options: ContextImplOptions) {
     this.#cancellationReason = options.cancellationReason;
     this.#deadlineAt = options.deadlineAt;
@@ -195,27 +193,6 @@ export class ContextImpl implements Context {
         disposable.dispose();
       });
     }
-  }
-
-  signal(): AbortController['signal'] {
-    if (!this.#abortController) {
-      this.#abortController = new AbortController();
-
-      const err = this.error();
-
-      if (err) {
-        this.#abortController.abort(
-          //@ts-ignore AbortControllers will soon have
-          // the ability to pass reasons.
-          err
-        );
-      } else {
-        // Wire up cancellation events to the AbortController
-        this.onDidCancel(this.#abortController.abort.bind(this.#abortController));
-      }
-    }
-
-    return this.#abortController.signal;
   }
 
   error(): CancellationReason | undefined {
@@ -262,6 +239,8 @@ export class ContextImpl implements Context {
       fn: listener,
     };
 
+    let disposable: Disposable | undefined = undefined;
+
     this.#listeners.push(ref);
 
     const err = this.error();
@@ -269,11 +248,13 @@ export class ContextImpl implements Context {
     if (err) {
       // The context is already cancelled so what we're going to do
       // is schedule the listener for later in the event loop.
-      this.#host.scheduleMicrotask(ContextImpl.notify, this);
+      disposable = this.#host.scheduleMicrotask(ContextImpl.notify, this);
     }
 
     return {
       dispose: () => {
+        disposable?.dispose();
+
         const idx = this.#listeners.indexOf(ref);
 
         if (idx >= 0) {
