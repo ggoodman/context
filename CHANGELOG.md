@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- - Major API redesign for simplicity, portability and tree-shakeability.
 
 ## [1.1.2] - 2021-11-10
 ### Fixed
