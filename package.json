@@ -14,7 +14,7 @@
   "scripts": {
     "build": "distilt",
     "dev": "microbundle watch",
-    "test": "uvu -r esbuild-register",
+    "test": "c8 uvu -r esbuild-register",
     "posttest": "kacl lint",
     "prepack": "npm run build",
     "preversion": "kacl prerelease",
@@ -43,16 +43,22 @@
     "singleQuote": true
   },
   "devDependencies": {
-    "@types/node": "^14.14.43",
-    "distilt": "^0.10.5",
-    "esbuild-register": "^2.5.0",
-    "gh-release": "^5.0.0",
+    "@types/node": "^16.11.14",
+    "c8": "^7.11.0",
+    "distilt": "^0.16.8",
+    "esbuild": "^0.14.22",
+    "esbuild-register": "^3.3.2",
+    "gh-release": "^6.0.1",
     "kacl": "^1.1.1",
     "prettier": "^2.2.1",
-    "typescript": "^4.2.4",
-    "uvu": "^0.5.1"
+    "typescript": "^4.5.5",
+    "uvu": "^0.5.3"
   },
-  "dependencies": {
-    "ts-primitives": "^3.2.0"
+  "volta": {
+    "node": "16.13.1",
+    "npm": "8.3.0"
+  },
+  "engines": {
+    "node": ">=14.6"
   }
 }

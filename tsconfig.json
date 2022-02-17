@@ -28,7 +28,9 @@
     "sourceMap": true,
     "strict": true,
     "stripInternal": true,
-    "target": "ESNext"
+    "target": "ESNext",
+    "types": [],
+    "useDefineForClassFields": true
   },
   "include": ["./package.json", "./src"]
 }
