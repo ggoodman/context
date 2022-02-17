@@ -1,6 +1,6 @@
 import { withCancel } from '..';
 import type { CancelFunc, Context } from '../context';
-import { ContextImpl } from '../emitterImpl';
+import { ContextImpl } from '../contextImpl';
 import { invariant } from '../invariant';
 
 export class ErrGroup {

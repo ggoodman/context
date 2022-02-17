@@ -12,7 +12,7 @@ import {
   withDeadline,
   withTimeout,
 } from '.';
-import { ContextImpl } from './emitterImpl';
+import { ContextImpl } from './contextImpl';
 import { isCancelledError, isContextError, isDeadlineExceededError } from './errors';
 import type { ContextHost, Disposable } from './host';
 

@@ -1,6 +1,6 @@
 import { finished } from 'node:stream';
 import type { Context } from './context';
-import { ContextImpl } from './emitterImpl';
+import { ContextImpl } from './contextImpl';
 
 export function withStreamCompletion(
   ctx: Context,

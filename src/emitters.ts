@@ -1,7 +1,7 @@
 ///<reference types="node" />
 
 import type { Context } from './context';
-import { ContextImpl } from './emitterImpl';
+import { ContextImpl } from './contextImpl';
 
 interface EventEmitterLike {
   once(eventName: string, handler: AnyFunc): void;

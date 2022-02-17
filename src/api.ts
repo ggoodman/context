@@ -1,5 +1,5 @@
 import type { CancelFunc, Context } from './context';
-import { ContextImpl } from './emitterImpl';
+import { ContextImpl } from './contextImpl';
 
 export type { Context } from './context';
 export * from './errors';

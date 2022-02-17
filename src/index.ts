@@ -1,4 +1,4 @@
-import { ContextImpl } from './emitterImpl';
+import { ContextImpl } from './contextImpl';
 import { ContextHostWeb } from './hostImpl';
 
 export * from './api';

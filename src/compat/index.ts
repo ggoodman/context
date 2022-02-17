@@ -1,6 +1,6 @@
 ///<reference types="node" />
 
-import { ContextImpl } from '../emitterImpl';
+import { ContextImpl } from '../contextImpl';
 import { ContextHostNode } from './host';
 
 export * from '../api';
