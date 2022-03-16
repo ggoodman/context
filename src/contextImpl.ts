@@ -8,7 +8,15 @@ import {
 import type { ContextHost, Disposable } from './host';
 import { invariant } from './invariant';
 
-const kContext = Symbol.for('@ggoodman/context');
+const kDeadlineAt = Symbol('kDeadlineAt');
+const kParent = Symbol('kParent');
+const kKey = Symbol('kKey');
+const kValue = Symbol('kValue');
+const kCancellationReason = Symbol('kCancellationReason');
+const kBrand = Symbol.for('@ggoodman/context@2');
+const kHost = Symbol('kHost');
+const kListeners = Symbol('kListeners');
+const kRoots = Symbol('kRoots');
 
 interface WrappedCancellationListener {
   fn: CancellationListener;
@@ -23,13 +31,13 @@ export interface ContextImplOptions {
 }
 
 export class ContextImpl implements Context {
-  static #roots: WeakMap<ContextHost, ContextImpl> = new WeakMap();
+  static [kRoots]: WeakMap<ContextHost, ContextImpl> = new WeakMap();
 
   static background(host: ContextHost) {
-    let root = ContextImpl.#roots.get(host);
+    let root = ContextImpl[kRoots].get(host);
     if (!root) {
       root = new ContextImpl(host, {});
-      ContextImpl.#roots.set(host, root);
+      ContextImpl[kRoots].set(host, root);
     }
 
     return root;
@@ -41,11 +49,11 @@ export class ContextImpl implements Context {
       'Attempting to extract the host of a non-Context reference'
     );
 
-    return obj.#host;
+    return obj[kHost];
   }
 
   static isContext(obj: unknown): obj is ContextImpl {
-    return obj != null && typeof obj === 'object' && (obj as ContextImpl).#brand === kContext;
+    return obj != null && typeof obj === 'object' && (obj as ContextImpl)[kBrand] === true;
   }
 
   static withCancel(ctx: Context): { ctx: ContextImpl; cancel: CancelFunc } {
@@ -53,9 +61,9 @@ export class ContextImpl implements Context {
       throw new TypeError('Argument must be a valid Context');
     }
 
-    const childCtx = new ContextImpl(ctx.#host, {
+    const childCtx = new ContextImpl(ctx[kHost], {
       cancellationReason: ctx.error(),
-      deadlineAt: ctx.#deadlineAt,
+      deadlineAt: ctx[kDeadlineAt],
       parent: ctx,
     });
     const cancel = (message?: string | Error) => {
@@ -78,8 +86,9 @@ export class ContextImpl implements Context {
       throw new TypeError('Argument must be a valid Context');
     }
 
-    const deadlineAt = ctx.#deadlineAt ? Math.min(ctx.#deadlineAt, epochTimeMs) : epochTimeMs;
-    const childCtx = new ContextImpl(ctx.#host, {
+    const parentDeadlineAt = ctx[kDeadlineAt];
+    const deadlineAt = parentDeadlineAt ? Math.min(parentDeadlineAt, epochTimeMs) : epochTimeMs;
+    const childCtx = new ContextImpl(ctx[kHost], {
       cancellationReason: ctx.error(),
       deadlineAt: deadlineAt,
       parent: ctx,
@@ -88,10 +97,10 @@ export class ContextImpl implements Context {
 
     // If the parent has a deadline and it will fire sooner, let's rely on that. Otherwise, set up
     // a new timer to trigger cancellation.
-    if (!ctx.#deadlineAt || ctx.#deadlineAt > deadlineAt) {
-      now ??= ctx.#host.getTime();
+    if (!parentDeadlineAt || parentDeadlineAt > deadlineAt) {
+      now ??= ctx[kHost].getTime();
 
-      const { dispose } = ctx.#host.scheduleWithTimeout(deadlineAt - now, () => {
+      const { dispose } = ctx[kHost].scheduleWithTimeout(deadlineAt - now, () => {
         ContextImpl.cancel(childCtx, new DeadlineExceededError());
       });
 
@@ -107,7 +116,7 @@ export class ContextImpl implements Context {
       throw new TypeError('Argument must be a valid Context');
     }
 
-    const now = ctx.#host.getTime();
+    const now = ctx[kHost].getTime();
     const epochTimeMs = now + timeoutMs;
 
     return ContextImpl.withDeadline(ctx, epochTimeMs, now);
@@ -124,24 +133,27 @@ export class ContextImpl implements Context {
     }
 
     // Set up a default reason.
-    ctx.#cancellationReason = reason ?? new CancelledError();
+    ctx[kCancellationReason] = reason ?? new CancelledError();
 
-    return void ctx.#host.scheduleMicrotask(ContextImpl.notify, ctx);
+    return void ctx[kHost].scheduleMicrotask(ContextImpl.notify, ctx);
   }
 
   private static notify(ctx: ContextImpl): void {
     const errors: unknown[] = [];
+    const reason = ctx[kCancellationReason];
 
     invariant(
-      ctx.#cancellationReason,
+      reason,
       'Attempting to notify listeners of a Context that has no cancellation reason'
     );
 
-    while (ctx.#listeners.length) {
-      const listenerRef = ctx.#listeners.shift()!;
+    const listeners = ctx[kListeners];
+
+    while (listeners.length) {
+      const listenerRef = listeners.shift()!;
 
       try {
-        listenerRef.fn(ctx.#cancellationReason);
+        listenerRef.fn(reason);
       } catch (err) {
         errors.push(err);
       }
@@ -155,36 +167,38 @@ export class ContextImpl implements Context {
         : undefined;
 
     if (err) {
-      if (!ctx.#host.onUncaughtException) {
+      const onUncaughtException = ctx[kHost].onUncaughtException;
+
+      if (!onUncaughtException) {
         throw err;
       }
 
       // We're intentionally not wrapping this in a try / catch. If an error handler
       // is supplied and *THAT* throws then we're just going to have to give up.
-      ctx.#host.onUncaughtException(err);
+      onUncaughtException.call(ctx[kHost], err);
     }
   }
 
-  readonly #brand = kContext;
-  readonly #host: ContextHost;
-  readonly #listeners: WrappedCancellationListener[] = [];
+  private readonly [kBrand] = true;
+  private readonly [kHost]: ContextHost;
+  private readonly [kListeners]: WrappedCancellationListener[] = [];
 
-  #cancellationReason?: CancellationReason;
-  #deadlineAt?: number;
-  #parent?: ContextImpl;
-  #key?: any;
-  #value?: any;
+  private [kCancellationReason]?: CancellationReason;
+  private [kDeadlineAt]?: number;
+  private [kParent]?: ContextImpl;
+  private [kKey]?: any;
+  private [kValue]?: any;
 
   constructor(host: ContextHost, options: ContextImplOptions) {
-    this.#cancellationReason = options.cancellationReason;
-    this.#deadlineAt = options.deadlineAt;
-    this.#host = host;
-    this.#key = options.key;
-    this.#value = options.value;
-    this.#parent = options.parent;
+    this[kCancellationReason] = options.cancellationReason;
+    this[kDeadlineAt] = options.deadlineAt;
+    this[kHost] = host;
+    this[kKey] = options.key;
+    this[kValue] = options.value;
+    this[kParent] = options.parent;
 
-    if (this.#parent) {
-      const disposable = this.#parent.onDidCancel((reason) => {
+    if (options.parent) {
+      const disposable = options.parent.onDidCancel((reason) => {
         ContextImpl.cancel(this, reason);
       });
 
@@ -196,43 +210,44 @@ export class ContextImpl implements Context {
   }
 
   error(): CancellationReason | undefined {
-    if (this.#cancellationReason) {
-      return this.#cancellationReason;
+    if (this[kCancellationReason]) {
+      return this[kCancellationReason];
     }
 
-    const parentReason = this.#parent?.error();
+    const parentReason = this[kParent]?.error();
+    const deadlineAt = this[kDeadlineAt];
 
     if (parentReason) {
-      this.#cancellationReason = parentReason;
+      this[kCancellationReason] = parentReason;
 
       // Notify listeners later in the tick.
-      this.#host.scheduleMicrotask(ContextImpl.notify, this);
-    } else if (typeof this.#deadlineAt === 'number') {
-      const now = this.#host.getTime();
+      this[kHost].scheduleMicrotask(ContextImpl.notify, this);
+    } else if (typeof deadlineAt === 'number') {
+      const now = this[kHost].getTime();
 
-      if (now >= this.#deadlineAt) {
+      if (now >= deadlineAt) {
         // The async timer didn't fire but the context has exceeded its lifetime.
-        this.#cancellationReason = new DeadlineExceededError();
+        this[kCancellationReason] = new DeadlineExceededError();
 
         // Notify listeners later in the tick.
-        this.#host.scheduleMicrotask(ContextImpl.notify, this);
+        this[kHost].scheduleMicrotask(ContextImpl.notify, this);
       }
     }
 
-    return this.#cancellationReason;
+    return this[kCancellationReason];
   }
 
   getValue(key: unknown): unknown {
-    if (this.#key === key) {
-      return this.#value;
+    if (this[kKey] === key) {
+      return this[kValue];
     }
 
     // Delegate to parent, if available
-    return this.#parent?.getValue(key);
+    return this[kParent]?.getValue(key);
   }
 
   hasValue(key: unknown): boolean {
-    return this.#key === key || (!!this.#parent?.hasValue(key) ?? false);
+    return this[kKey] === key || (this[kParent]?.hasValue(key) ?? false);
   }
 
   onDidCancel(listener: CancellationListener): Disposable {
@@ -245,24 +260,24 @@ export class ContextImpl implements Context {
 
     let disposable: Disposable | undefined = undefined;
 
-    this.#listeners.push(ref);
+    this[kListeners].push(ref);
 
     const err = this.error();
 
     if (err) {
       // The context is already cancelled so what we're going to do
       // is schedule the listener for later in the event loop.
-      disposable = this.#host.scheduleMicrotask(ContextImpl.notify, this);
+      disposable = this[kHost].scheduleMicrotask(ContextImpl.notify, this);
     }
 
     return {
       dispose: () => {
         disposable?.dispose();
 
-        const idx = this.#listeners.indexOf(ref);
+        const idx = this[kListeners].indexOf(ref);
 
         if (idx >= 0) {
-          this.#listeners.splice(idx, 1);
+          this[kListeners].splice(idx, 1);
         }
       },
     };
@@ -302,9 +317,9 @@ export class ContextImpl implements Context {
   }
 
   withValue(key: unknown, value: unknown): Context {
-    return new ContextImpl(this.#host, {
-      cancellationReason: this.#cancellationReason,
-      deadlineAt: this.#deadlineAt,
+    return new ContextImpl(this[kHost], {
+      cancellationReason: this[kCancellationReason],
+      deadlineAt: this[kDeadlineAt],
       key,
       value,
       parent: this,
