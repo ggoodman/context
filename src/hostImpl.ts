@@ -4,15 +4,19 @@ import { queueMicrotask } from './queueMicrotask';
 type AnyArgs = any[];
 type AnyFunc = (...args: AnyArgs) => any;
 
+const kInstance = Symbol('kInstance');
+
 export class ContextHostImpl implements ContextHost {
-  static #instance?: ContextHostImpl;
+  private static [kInstance]?: ContextHostImpl;
 
   static getInstance() {
-    if (!this.#instance) {
-      this.#instance = new ContextHostImpl();
+    let instance = this[kInstance];
+    if (!instance) {
+      instance = new ContextHostImpl();
+      this[kInstance] = instance;
     }
 
-    return this.#instance;
+    return instance;
   }
 
   readonly scheduleWithTimeout = nativeScheduleWithTimeout;

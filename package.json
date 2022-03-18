@@ -43,6 +43,7 @@
     "singleQuote": true
   },
   "devDependencies": {
+    "@jonahsnider/benchmark": "^5.0.0",
     "@types/node": "^16.11.14",
     "c8": "^7.11.0",
     "distilt": "^0.16.8",

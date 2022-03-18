@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Changed
+- Adjust use of private fields to use private `Symbol` properties as a performance optimization for targets that don't yet support private fields.
 
 ## [2.0.0] - 2022-02-17
 ### Added
