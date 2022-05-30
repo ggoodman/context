@@ -1,6 +1,7 @@
 import type { CancelFunc, Context } from './context';
 import { ContextImpl } from './contextImpl';
 
+export * from './abortController';
 export type { Context } from './context';
 export * from './emitters';
 export * from './errors';

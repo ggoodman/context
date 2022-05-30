@@ -11,9 +11,15 @@ import {
   withDeadline,
   withTimeout,
 } from '.';
+import { withAbortSignal, type AbortController } from './abortController';
 import { ContextImpl } from './contextImpl';
 import { isCancelledError, isContextError, isDeadlineExceededError } from './errors';
 import type { ContextHost, Disposable } from './host';
+
+declare var AbortController: {
+  prototype: AbortController;
+  new (): AbortController;
+};
 
 describe('background', (it) => {
   it('.error() is undefined', () => {
@@ -88,13 +94,10 @@ describe('Cancellation listeners', (it) => {
 
     cancel();
 
-    assert.equal(firedCount, 0);
-    host.flushMicrotaskQueue();
     assert.equal(firedCount, 1);
 
     cancel();
 
-    host.flushMicrotaskQueue();
     assert.equal(firedCount, 1);
   });
 
@@ -113,27 +116,6 @@ describe('Cancellation listeners', (it) => {
     cancel();
 
     assert.equal(firedCount, 0);
-    host.flushMicrotaskQueue();
-    assert.equal(firedCount, 0);
-  });
-
-  it('will not fire if they have been disposed after the Context is cancelled but before the next microtick', () => {
-    const host = new TestContextHost();
-    const root = ContextImpl.background(host);
-    const { ctx, cancel } = withCancel(root);
-
-    let firedCount = 0;
-
-    const { dispose } = ctx.onDidCancel(() => {
-      firedCount++;
-    });
-
-    cancel();
-    dispose();
-
-    assert.equal(firedCount, 0);
-    host.flushMicrotaskQueue();
-    assert.equal(firedCount, 0);
   });
 
   it('will fire with the same reason reference when cancelled after registering the handler', () => {
@@ -150,13 +132,6 @@ describe('Cancellation listeners', (it) => {
     cancel();
 
     assert.instance(ctx.error(), CancelledError);
-
-    // Handlers fire later in the event-loop so we expect this to be undefined
-    assert.equal(reason, undefined);
-
-    // Simulate advancing the event loop
-    host.flushMicrotaskQueue();
-
     assert.is(ctx.error(), reason);
   });
 
@@ -176,12 +151,6 @@ describe('Cancellation listeners', (it) => {
     assert.instance(ctx.error(), CancelledError);
     assert.ok(isContextError(ctx.error()));
 
-    // Handlers fire later in the event-loop so we expect this to be undefined
-    assert.equal(reason, undefined);
-
-    // Simulate advancing the event loop
-    host.flushMicrotaskQueue();
-
     assert.is(ctx.error(), reason);
   });
 
@@ -190,14 +159,12 @@ describe('Cancellation listeners', (it) => {
     const root = ContextImpl.background(host);
     const { ctx, cancel } = withCancel(root);
 
-    cancel();
-
     const err = new Error('oops');
     ctx.onDidCancel(() => {
       throw err;
     });
 
-    host.flushMicrotaskQueue();
+    cancel();
 
     assert.equal(host.uncaughtExceptions, [err]);
   });
@@ -207,8 +174,6 @@ describe('Cancellation listeners', (it) => {
     const root = ContextImpl.background(host);
     const { ctx, cancel } = withCancel(root);
 
-    cancel();
-
     const err = new Error('oops');
     ctx.onDidCancel(() => {
       throw err;
@@ -217,7 +182,7 @@ describe('Cancellation listeners', (it) => {
       throw err;
     });
 
-    host.flushMicrotaskQueue();
+    cancel();
 
     // We want to make sure that the above handlers get batched into the same flush
     // and produce an AggregateError and nothing else.
@@ -243,7 +208,7 @@ describe('Child contexts', (it) => {
     assert.is(ctx.error(), childCtx.error());
   });
 
-  it('will fire their handlers async when the parent is cancelled', () => {
+  it('will fire their handlers synchronously when the parent is cancelled', () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
     const { ctx, cancel } = withCancel(root);
@@ -256,20 +221,17 @@ describe('Child contexts', (it) => {
     });
 
     cancel();
-
-    assert.equal(reason, undefined);
-
-    host.flushMicrotaskQueue();
 
     assert.instance(reason, CancelledError);
     assert.is(childCtx.error(), reason);
   });
 
-  it('will fire their handlers async when created from a cancelled parent', () => {
+  it('will fire their handlers synchronously when created from a cancelled parent', () => {
     const host = new TestContextHost();
     const root = ContextImpl.background(host);
     const { ctx, cancel } = withCancel(root);
 
+    // Cancel the parent Context
     cancel();
 
     const { ctx: childCtx } = withCancel(ctx);
@@ -279,10 +241,6 @@ describe('Child contexts', (it) => {
     childCtx.onDidCancel((e) => {
       reason = e;
     });
-
-    assert.equal(reason, undefined);
-
-    host.flushMicrotaskQueue();
 
     assert.instance(reason, CancelledError);
     assert.is(childCtx.error(), reason);
@@ -303,35 +261,6 @@ describe('Child contexts', (it) => {
 
     dispose();
     cancel();
-
-    assert.equal(reason, undefined);
-
-    host.flushMicrotaskQueue();
-
-    assert.equal(reason, undefined);
-    assert.instance(childCtx.error(), CancelledError);
-  });
-
-  it('will not fire their handlers when they have been disposed after cancellation', () => {
-    const host = new TestContextHost();
-    const root = ContextImpl.background(host);
-    const { ctx, cancel } = withCancel(root);
-
-    cancel();
-
-    const { ctx: childCtx } = withCancel(ctx);
-
-    let reason: CancellationReason | undefined = undefined;
-
-    const { dispose } = childCtx.onDidCancel((e) => {
-      reason = e;
-    });
-
-    dispose();
-
-    assert.equal(reason, undefined);
-
-    host.flushMicrotaskQueue();
 
     assert.equal(reason, undefined);
     assert.instance(childCtx.error(), CancelledError);
@@ -472,8 +401,6 @@ describe('Promise interop', (it) => {
 
     cancel();
 
-    host.flushMicrotaskQueue();
-
     await promise;
 
     assert.equal(didCancel, true);
@@ -503,8 +430,6 @@ describe('Promise interop', (it) => {
     assert.equal(ctx.error(), undefined);
 
     cancel();
-
-    host.flushMicrotaskQueue();
 
     await promise;
 
@@ -538,8 +463,6 @@ describe('Promise interop', (it) => {
 
     cancel();
 
-    host.flushMicrotaskQueue();
-
     await promise;
 
     assert.equal(didCancel, true);
@@ -569,8 +492,6 @@ describe('Promise interop', (it) => {
     assert.equal(ctx.error(), undefined);
 
     cancel();
-
-    host.flushMicrotaskQueue();
 
     await promise;
 
@@ -633,6 +554,84 @@ describe('Context-local storage', (it) => {
   });
 });
 
+describe('AbortController interop', (it) => {
+  it('will mark an AbortSignal as aborted when the Context is cancelled', () => {
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
+    const { ctx, cancel } = withCancel(root);
+
+    assert.not(ctx.signal.aborted);
+
+    let abortReason: CancellationReason | null = null;
+
+    ctx.signal.addEventListener('abort', () => {
+      abortReason = ctx.signal.reason;
+    });
+
+    assert.not(abortReason);
+    assert.not(ctx.signal.aborted);
+
+    cancel('you shall not pass');
+
+    assert.ok(ctx.signal.aborted);
+    // Pending support for AbortReason
+    // assert.equal(ctx.signal.reason, 'you shall not pass');
+    // assert.equal(abortReason, 'you shall not pass');
+  });
+
+  it('will interface with an unaborted AbortSignal', () => {
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
+    const ctl = host.createAbortController();
+
+    const ctx = withAbortSignal(root, ctl.signal);
+
+    let firedCancellationReason: CancellationReason | null = null;
+
+    ctx.onDidCancel((reason) => {
+      firedCancellationReason = reason;
+    });
+
+    assert.not(ctx.signal.aborted);
+    assert.not(ctx.error());
+    assert.not(firedCancellationReason);
+
+    ctl.abort();
+
+    assert.ok(ctx.signal.aborted);
+    assert.ok(firedCancellationReason);
+    assert.is(ctx.error(), firedCancellationReason);
+
+    // Pending support for AbortReason
+    // assert.equal(ctx.signal.reason, 'you shall not pass');
+    // assert.equal(abortReason, 'you shall not pass');
+  });
+
+  it('will interface with an aborted AbortSignal', () => {
+    const host = new TestContextHost();
+    const root = ContextImpl.background(host);
+    const ctl = host.createAbortController();
+
+    ctl.abort();
+
+    const ctx = withAbortSignal(root, ctl.signal);
+
+    let firedCancellationReason: CancellationReason | null = null;
+
+    ctx.onDidCancel((reason) => {
+      firedCancellationReason = reason;
+    });
+
+    assert.ok(ctx.signal.aborted);
+    assert.ok(firedCancellationReason);
+    assert.is(ctx.error(), firedCancellationReason);
+
+    // Pending support for AbortReason
+    // assert.equal(ctx.signal.reason, 'you shall not pass');
+    // assert.equal(abortReason, 'you shall not pass');
+  });
+});
+
 interface HandlerChainNode {
   args: any[];
   handler: (...args: any[]) => any;
@@ -646,10 +645,13 @@ interface HandlerChainNodeWithTimeout extends HandlerChainNode {
 
 class TestContextHost implements ContextHost {
   private timerQueue: HandlerChainNodeWithTimeout | undefined = undefined;
-  private microTaskQueue: HandlerChainNode | undefined = undefined;
   private currentTimeMs = 0;
 
   public readonly uncaughtExceptions: unknown[] = [];
+
+  createAbortController(): AbortController {
+    return new AbortController();
+  }
 
   getTime(): number {
     return this.currentTimeMs;
@@ -657,31 +659,6 @@ class TestContextHost implements ContextHost {
 
   onUncaughtException(e: unknown) {
     this.uncaughtExceptions.push(e);
-  }
-
-  scheduleMicrotask(fn: (...args: any[]) => any, ...args: any[]): Disposable {
-    const handle: HandlerChainNode = {
-      args,
-      handler: fn,
-    };
-
-    let node = this.microTaskQueue;
-
-    if (!node) {
-      this.microTaskQueue = handle;
-    } else {
-      while (node.next) {
-        node = node.next;
-      }
-
-      node.next = handle;
-    }
-
-    return {
-      dispose: () => {
-        this.clearHandle(handle, this.microTaskQueue);
-      },
-    };
   }
 
   scheduleWithTimeout(timeout: number, fn: (...args: any[]) => any, ...args: any[]): Disposable {
@@ -717,39 +694,18 @@ class TestContextHost implements ContextHost {
   ) {
     this.currentTimeMs += durationMs;
 
-    if (!options.skipMicrotasks) {
-      this.flushMicrotaskQueue();
-    }
-
     if (!options.skipFireEvents) {
       while (this.timerQueue && this.timerQueue.timeoutAt <= this.currentTimeMs) {
         const head = this.timerQueue;
         this.timerQueue = head.next;
 
         head.handler(...head.args);
-
-        if (!options.skipMicrotasks) {
-          this.flushMicrotaskQueue();
-        }
       }
-    }
-
-    if (!options.skipMicrotasks) {
-      this.flushMicrotaskQueue();
     }
   }
 
   currentTime() {
     return this.currentTimeMs;
-  }
-
-  flushMicrotaskQueue() {
-    while (this.microTaskQueue) {
-      const head = this.microTaskQueue;
-      this.microTaskQueue = head.next;
-
-      head.handler(...head.args);
-    }
   }
 
   private clearHandle(handle: HandlerChainNode, head?: HandlerChainNode) {

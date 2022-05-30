@@ -1,5 +1,10 @@
+import type { AbortController } from './abortController';
 import type { ContextHost, Disposable } from './host';
-import { queueMicrotask } from './queueMicrotask';
+
+declare var AbortController: {
+  prototype: AbortController;
+  new (): AbortController;
+};
 
 type AnyArgs = any[];
 type AnyFunc = (...args: AnyArgs) => any;
@@ -27,24 +32,6 @@ export class ContextHostImpl implements ContextHost {
 
   getTime() {
     return Date.now();
-  }
-
-  scheduleMicrotask(fn: AnyFunc, ...args: AnyArgs): Disposable {
-    let cancelled = false;
-
-    queueMicrotask(() => {
-      if (cancelled) {
-        return;
-      }
-
-      fn(...args);
-    });
-
-    return {
-      dispose() {
-        cancelled = true;
-      },
-    };
   }
 }
 

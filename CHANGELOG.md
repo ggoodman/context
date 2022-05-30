@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- Added support for interfacing with `AbortController` and `AbortSignal` objects.
+  
+  Notably:
+  
+  1. `Context` objects now have a read-only property `signal` that is an `AbortSignal` whose lifetime is bound to that of the `Context`.
+  2. A `withAbortSignal(ctx: Context, signal: AbortSignal): Context` API is introduced for creating a child `Context` whose lifetime is bound to that of a passed-in `AbortSignal`.
+
+### Changed
+- **BREAKING** Changed the behaviour of `Context` objects' `onDidCancel` handlers to be _synchronous_. In other words, cancelling a `Context` will immediately fire its cancellation listeners and those of all child `Context`s.
 
 ## [2.1.0] - 2022-03-18
 ### Changed

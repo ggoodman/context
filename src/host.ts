@@ -1,3 +1,5 @@
+import type { AbortController } from './abortController';
+
 type AnyArgs = any[];
 type AnyFunc = (...args: AnyArgs) => any;
 
@@ -6,8 +8,8 @@ export interface Disposable {
 }
 
 export interface ContextHost {
+  createAbortController(): AbortController;
   getTime(): number;
-  scheduleMicrotask(fn: AnyFunc, ...args: AnyArgs): Disposable;
   scheduleWithTimeout(timeout: number, fn: AnyFunc, ...args: AnyArgs): Disposable;
 
   onUncaughtException?(err: unknown): void;

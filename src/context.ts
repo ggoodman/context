@@ -1,5 +1,4 @@
-///<reference lib="dom" />
-
+import type { AbortSignal } from './abortController';
 import type { CancellationReason } from './errors';
 import type { Disposable } from './host';
 
@@ -7,6 +6,8 @@ export type CancelFunc = (message?: string | Error) => void;
 export type CancellationListener = (err: CancellationReason) => any;
 
 export interface Context extends PromiseLike<never> {
+  readonly signal: AbortSignal;
+
   /**
    * Produce a `Promise` that will *resolve* to the Context's cancellation
    * reason.
