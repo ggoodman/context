@@ -1,3 +1,4 @@
+import type { AbortController, AbortSignal } from './abortController';
 import type { CancelFunc, CancellationListener, Context } from './context';
 import {
   AggregateError,
@@ -17,6 +18,11 @@ const kBrand = Symbol.for('@ggoodman/context@2');
 const kHost = Symbol('kHost');
 const kListeners = Symbol('kListeners');
 const kRoots = Symbol('kRoots');
+const kAbortController = Symbol('kAbortController');
+
+const noopDisposable: Disposable = {
+  dispose() {},
+};
 
 interface WrappedCancellationListener {
   fn: CancellationListener;
@@ -135,7 +141,7 @@ export class ContextImpl implements Context {
     // Set up a default reason.
     ctx[kCancellationReason] = reason ?? new CancelledError();
 
-    return void ctx[kHost].scheduleMicrotask(ContextImpl.notify, ctx);
+    return void ContextImpl.notify(ctx);
   }
 
   private static notify(ctx: ContextImpl): void {
@@ -167,16 +173,20 @@ export class ContextImpl implements Context {
         : undefined;
 
     if (err) {
-      const onUncaughtException = ctx[kHost].onUncaughtException;
-
-      if (!onUncaughtException) {
-        throw err;
-      }
-
-      // We're intentionally not wrapping this in a try / catch. If an error handler
-      // is supplied and *THAT* throws then we're just going to have to give up.
-      onUncaughtException.call(ctx[kHost], err);
+      ContextImpl.notifyUncaughtException(ctx, err);
     }
+  }
+
+  private static notifyUncaughtException(ctx: ContextImpl, err: unknown): void {
+    const onUncaughtException = ctx[kHost].onUncaughtException;
+
+    if (!onUncaughtException) {
+      throw err;
+    }
+
+    // We're intentionally not wrapping this in a try / catch. If an error handler
+    // is supplied and *THAT* throws then we're just going to have to give up.
+    onUncaughtException.call(ctx[kHost], err);
   }
 
   private readonly [kBrand] = true;
@@ -186,6 +196,7 @@ export class ContextImpl implements Context {
   private [kCancellationReason]?: CancellationReason;
   private [kDeadlineAt]?: number;
   private [kParent]?: ContextImpl;
+  private [kAbortController]?: AbortController;
   private [kKey]?: any;
   private [kValue]?: any;
 
@@ -209,6 +220,22 @@ export class ContextImpl implements Context {
     }
   }
 
+  get signal(): AbortSignal {
+    let ctl = this[kAbortController];
+    if (!ctl) {
+      ctl = this[kHost].createAbortController();
+      this[kAbortController] = ctl;
+
+      if (this[kCancellationReason]) {
+        ctl.abort(this[kCancellationReason]);
+      } else {
+        this.onDidCancel(createCancelFunc(ctl));
+      }
+    }
+
+    return ctl.signal;
+  }
+
   error(): CancellationReason | undefined {
     if (this[kCancellationReason]) {
       return this[kCancellationReason];
@@ -220,8 +247,8 @@ export class ContextImpl implements Context {
     if (parentReason) {
       this[kCancellationReason] = parentReason;
 
-      // Notify listeners later in the tick.
-      this[kHost].scheduleMicrotask(ContextImpl.notify, this);
+      // Immediately notify listeners.
+      ContextImpl.notify(this);
     } else if (typeof deadlineAt === 'number') {
       const now = this[kHost].getTime();
 
@@ -229,8 +256,8 @@ export class ContextImpl implements Context {
         // The async timer didn't fire but the context has exceeded its lifetime.
         this[kCancellationReason] = new DeadlineExceededError();
 
-        // Notify listeners later in the tick.
-        this[kHost].scheduleMicrotask(ContextImpl.notify, this);
+        // Immediately notify listeners.
+        ContextImpl.notify(this);
       }
     }
 
@@ -251,6 +278,21 @@ export class ContextImpl implements Context {
   }
 
   onDidCancel(listener: CancellationListener): Disposable {
+    const err = this[kCancellationReason];
+
+    if (err) {
+      // The context is already cancelled so what we're going to short-cut the whole
+      // eventing system.
+      try {
+        listener(err);
+      } catch (err) {
+        ContextImpl.notifyUncaughtException(this, err);
+      }
+
+      // By-pass registering a listener.
+      return noopDisposable;
+    }
+
     // We need to wrap listeners in a wrapper so that two of the
     // same function registered as listeners don't have the same
     // referential identity.
@@ -261,14 +303,6 @@ export class ContextImpl implements Context {
     let disposable: Disposable | undefined = undefined;
 
     this[kListeners].push(ref);
-
-    const err = this.error();
-
-    if (err) {
-      // The context is already cancelled so what we're going to do
-      // is schedule the listener for later in the event loop.
-      disposable = this[kHost].scheduleMicrotask(ContextImpl.notify, this);
-    }
 
     return {
       dispose: () => {
@@ -325,4 +359,8 @@ export class ContextImpl implements Context {
       parent: this,
     });
   }
+}
+
+function createCancelFunc(ctl: AbortController): () => void {
+  return ctl.abort.bind(ctl);
 }

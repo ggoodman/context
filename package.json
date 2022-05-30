@@ -13,7 +13,6 @@
   "sideEffects": false,
   "scripts": {
     "build": "distilt",
-    "dev": "microbundle watch",
     "test": "c8 uvu -r esbuild-register",
     "posttest": "kacl lint",
     "prepack": "npm run build",
@@ -60,6 +59,6 @@
     "npm": "8.3.0"
   },
   "engines": {
-    "node": ">=14.6"
+    "node": ">=15.4.0"
   }
 }
